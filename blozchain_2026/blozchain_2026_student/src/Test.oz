@@ -30,7 +30,6 @@ local
                                   value: (Transaction.value div 10)) 
          NewAcc =Acc+{Puissance 2 N}
       in
-        
          {Effort NewTrans N+1 NewAcc}
       end
       else 
@@ -58,6 +57,23 @@ local
       end
    end
 
+   fun {NewState State Transaction}
+      local Sender Receiver Value AncienSender AncienReceiver NewUser1 NewUser2 NewState FinalState
+         Sender=Transaction.sender
+         Receiver=Transaction.receiver
+         Value=Transaction.value
+
+         AncienSender=State.Sender
+         AncienReceiver={CondSelect State Receiver user(balance:0 nonce:0)}
+
+         NewUser1=user(balance:AncienSender.balance-Value nonce:AncienSender.nonce+1)
+         NewUser2=user(balance:AncienReceiver.balance+Value nonce:AncienReceiver.nonce)
+      in
+         NewState = {Adjoin State state(Sender:NewUser1)}
+         FinalState= {Adjoin NewState state(Receiver:NewUser2)}
+         FinalState
+         end
+   end
    Tableau_Sharelock=tableau(10:a 11:b 12:c 13:d 14:e 15:f 16:g 17:h 18:i 19:j 20:k 21:l 22:m 23:n 24:o 25:p 26:q 27:r 28:s 29:t 30:u 31:v 32:w 33:x 34:y 35:z 36:' ')
 
    fun {Decrypt Number}
@@ -97,4 +113,5 @@ in
    %{Browse {Decrypt 9}}
    %{Browse {Phrase 291428661}} %Test pour traduire un Hash en Liste qui donne la réponse de Sharelock
    %{Browse {TransformToList 101010}}
+   %{Browse {NewState State Trans}}
 end
