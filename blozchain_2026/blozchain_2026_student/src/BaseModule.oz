@@ -92,25 +92,28 @@ end
     end
    end
 
-   fun {Valid_Bloc Blockchain BlocInd State} % Blockp = block présent, Blocka = block avant
-    Blockp = {GetBlock Blockchain BlocInd}
-
-    if BlocInd == 0 then
-        if Blockp.hash == {BlockHash Blockp} andthen
-           {AllValidTransactions Blockp.list_of_transactions State} == 1 andthen
-           {SumEfforts Blockp.list_of_transactions} =< 300
-        then 1 else 0 end
-    else
-         Blocka = {GetBlock Blockchain BlocInd-1} 
-         if Blockp.number == Blocka.number + 1 andthen
-            Blockp.previousHash == {BlockHash Blocka} andthen
-            Blockp.hash == {BlockHash Blockp} andthen
+fun {Valid_Bloc Blockchain BlocInd State}
+   local Blockp = {GetBlock Blockchain BlocInd}
+   in 
+      if BlocInd == 0 then
+         if Blockp.hash == {BlockHash Blockp} andthen
             {AllValidTransactions Blockp.list_of_transactions State} == 1 andthen
             {SumEfforts Blockp.list_of_transactions} =< 300
+      then 1 else 0 end
+      else
+         local Blocka = {GetBlock Blockchain BlocInd-1}
+         in
+            if Blockp.number == Blocka.number + 1 andthen
+               Blockp.previousHash == {BlockHash Blocka} andthen
+               Blockp.hash == {BlockHash Blockp} andthen
+               {AllValidTransactions Blockp.list_of_transactions State} == 1 andthen
+               {SumEfforts Blockp.list_of_transactions} =< 300
          then 1 else 0 end
-        end
-    end
 end
+end
+end
+end
+
 
 
     
