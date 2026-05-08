@@ -68,7 +68,47 @@ define
       then 1 
       else 0 
       end
+   
+      
+      fun {Valid_tout_transaction Transactions State} % Fonction qui valide toutes les transactions d'un bloc
+    case Transactions of nil then 1
+    [] H|T then
+        if {Valid_transaction H State} == 1 then
+            {AllValidTransactions T State}
+        else 0
+        end
+    end
+end
+
+
+   fun {GetBlock Blockchain K} % Fonction pour avoir le bloc de Blockchain à l'indice K 
+    case Blockchain of nil then nil
+    [] H|T then
+        if K == 0 then H
+        else {GetBlock T K-1}
+        end
+    end
    end
+
+   fun {Valid_Bloc Blockchain BlocInd State} % Blockp = block présent, Blocka = block avant
+    Blockp = {GetBlock Blockchain BlocInd}
+
+    if BlocInd == 0 then
+        if Blockp.hash == {BlockHash Blockp} andthen
+           {AllValidTransactions Blockp.list_of_transactions State} == 1 andthen
+           {SumEfforts Blockp.list_of_transactions} =< 300
+        then 1 else 0 end
+    else
+         Blocka = {GetBlock Blockchain BlocInd-1} 
+         if Blockp.number == Blocka.number + 1 andthen
+            Blockp.previousHash == {BlockHash Blocka} andthen
+            Blockp.hash == {BlockHash Blockp} andthen
+            {AllValidTransactions Blockp.list_of_transactions State} == 1 andthen
+            {SumEfforts Blockp.list_of_transactions} =< 300
+         then 1 else 0 end
+        end
+    end
+end
     
     %% PUT ANY AUXILIARY/HELPER FUNCTIONS THAT YOU NEED
 

@@ -99,6 +99,8 @@ local
          {Phrase_Liste Actual}
       end
    end
+
+   
    %% 2. Définissez vos données de test (Variables avec Majuscule !)
    Trans = transition(nonce:2 block_number:0 hash:1403 sender:0 receiver:1 value:1400 effort:15 max_effort:30000)
    Trans2 = transition(nonce:1 sender:1 receiver:2 value:10)
