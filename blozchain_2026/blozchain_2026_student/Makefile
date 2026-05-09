@@ -9,14 +9,16 @@ ZIP_NAME=$(NOMA1)_$(NOMA2).zip
 BASE_SRC=src/BaseModule.oz
 HELPER_SRC=library/FileHelperModule.oz
 MAIN_SRC=Main.oz
+EXT_SRC=src/Denylist.oz src/EffortCost.oz
 
 # Fichiers compilés (foncteurs)
 BASE_OZF=$(BASE_SRC:.oz=.ozf)
 HELPER_OZF=$(HELPER_SRC:.oz=.ozf)
 MAIN_OZF=$(MAIN_SRC:.oz=.ozf)
+EXT_OZF=$(EXT_SRC:.oz=.ozf)
 
 # Cible par défaut : tout compiler
-all: $(BASE_OZF) $(HELPER_OZF) $(MAIN_OZF)
+all: $(BASE_OZF) $(HELPER_OZF) $(MAIN_OZF) $(EXT_OZF)
 
 # Règle pour compiler les fichiers .oz en .ozf
 %.ozf: %.oz
@@ -29,7 +31,7 @@ $(MAIN_OZF): $(MAIN_SRC) $(BASE_OZF) $(HELPER_OZF)
 
 # Commande pour nettoyer les fichiers compilés
 clean:
-	rm -f $(BASE_OZF) $(HELPER_OZF) $(MAIN_OZF)
+	rm -f $(BASE_OZF) $(HELPER_OZF) $(MAIN_OZF) $(EXT_OZF)
 
 # Commande pour exécuter le programme (exemple avec arguments)
 run: all

@@ -1,12 +1,8 @@
 functor
-import
-   System
-   Application
 export
    decode:Decode
    executeBlockchain:ExecuteBlockchain
 define
-   %% --- FONCTIONS DE BASE ---
    fun {Puissance X N}
       if N == 0 then 1 else X * {Puissance X N-1} end
    end
@@ -31,26 +27,23 @@ define
       else Acc end
    end
 
-   %% --- GESTION DE L'ÉTAT (Conforme 2.1.6) ---
-   
-   %% Correction de AdaptGenesis : pas besoin d'import Record spécial
    fun {AdaptGenesis GenesisState}
-      {Record.mapInd GenesisState 
+      {Record.mapInd GenesisState
        fun {$ _ Balance} user(balance:Balance nonce:0) end}
    end
 
    fun {Valid_transaction T State}
-      local 
-         %% Utilise CondSelect pour gérer les nouveaux utilisateurs (solde montant reçu)
+      local
          Sender = {CondSelect State T.sender user(balance:0 nonce:0)}
+         E = {Effort T 1 1}
       in
          if T.max_effort >= 0 andthen
-            T.max_effort >= {Effort T 1 1} andthen
+            T.max_effort >= E andthen
             T.value >= 0 andthen
-            Sender.balance >= T.value andthen
+            Sender.balance >= T.value + E andthen
             T.hash \= 0 andthen
             T.hash == {TransactionHash T} andthen
-            T.nonce == Sender.nonce + 1 
+            T.nonce == Sender.nonce + 1
          then true else false end
       end
    end
@@ -58,28 +51,27 @@ define
    fun {NewState State T}
       local
          S = T.sender R = T.receiver V = T.value
+         E = {Effort T 1 1}
          OldS = {CondSelect State S user(balance:0 nonce:0)}
          OldR = {CondSelect State R user(balance:0 nonce:0)}
-         %% Nouveau sender : balance - value, nonce + 1
-         NS = user(balance: OldS.balance - V nonce: OldS.nonce + 1)
-         %% Nouveau receiver : balance + value, garde son nonce
+         NS = user(balance: OldS.balance - V - E nonce: OldS.nonce + 1)
          NR = user(balance: OldR.balance + V nonce: OldR.nonce)
       in
          {AdjoinAt {AdjoinAt State S NS} R NR}
       end
    end
 
-   %% --- LOGIQUE BLOCKCHAIN ---
-
    fun {CheckBlockTransactions Trans State Num AccEffort}
       case Trans of nil then nil
       [] T|Reste then
          local E = {Effort T 1 1} in
-            if {Valid_transaction T State} andthen 
-               T.block_number == Num andthen (AccEffort + E) =< 300 
+            if {Valid_transaction T State} andthen
+               T.block_number == Num andthen (AccEffort + E) =< 300
             then
                T | {CheckBlockTransactions Reste {NewState State T} Num AccEffort + E}
-            else {CheckBlockTransactions Reste State Num AccEffort} end
+            else
+               {CheckBlockTransactions Reste State Num AccEffort}
+            end
          end
       end
    end
@@ -97,10 +89,12 @@ define
       local B = {CreateBlock Trans State Num PrevHash} in
          if B.transactions == nil then nil # State
          else
-            local 
+            local
                NextS = {UpdateStateWithList State B.transactions}
                Rec = {BuildChain NextS Trans Num+1 B.hash}
-            in (B | Rec.1) # Rec.2 end
+            in
+               (B | Rec.1) # Rec.2
+            end
          end
       end
    end
@@ -115,7 +109,7 @@ define
 
    fun {Decrypt Number}
       local N = (Number mod 37) in
-         if N < 10 then Tableau_Sharelock.36 %% Renvoie ' ' (espace)
+         if N < 10 then Tableau_Sharelock.36
          else Tableau_Sharelock.N
          end
       end
@@ -127,36 +121,27 @@ define
 
    fun {Phrase_Liste Liste}
       case Liste of nil then nil
-      []H|H2|T then {Decrypt (10*H+H2)}|{Phrase_Liste T}
-      []H|nil then nil
+      [] H|H2|T then {Decrypt (10*H+H2)}|{Phrase_Liste T}
+      [] _|nil then nil
       end
    end
 
-   fun {Phrase Hash} %Transforme un Hash en Liste puis print la liste traduite selon le tableau de Sharelock
-      local Actual in
-         Actual={TransformToList Hash}
-         {Phrase_Liste Actual}
-      end
+   fun {Phrase Hash}
+      {Phrase_Liste {TransformToList Hash}}
    end
-   %% --- DÉCODAGE (2.2) ---
-   
+
    fun {Decode BChain}
-   %% Flatten transforme la liste de listes en une simple liste de caractères (String)
-      {Flatten 
-      case BChain of nil then nil
-      [] B|R then {Phrase B.hash} | {Decode R}
-      end}
+      {Flatten
+       case BChain of nil then nil
+       [] B|R then {Phrase B.hash} | {Decode R}
+       end}
    end
-
-   %% ... (Garder tes fonctions Phrase, Phrase_Liste, etc.) ...
-
-   %% --- EXÉCUTION FINALE ---
 
    proc {ExecuteBlockchain Genesis Transactions FinalState FinalBlockchain}
       local
          S0 = {AdaptGenesis Genesis}
-         %% On ajoute l'effort calculé à chaque transaction
-         TransWithEffort = {Map Transactions fun {$ T} {Adjoin T transition(effort:{Effort T 1 1})} end}
+         TransWithEffort =
+            {Map Transactions fun {$ T} {Adjoin T transition(effort:{Effort T 1 1})} end}
          Res = {BuildChain S0 TransWithEffort 0 0}
       in
          FinalBlockchain = Res.1
