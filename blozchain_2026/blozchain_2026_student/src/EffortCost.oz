@@ -140,8 +140,7 @@ define
    proc {ExecuteBlockchain Genesis Transactions FinalState FinalBlockchain}
       local
          S0 = {AdaptGenesis Genesis}
-         TransWithEffort =
-            {Map Transactions fun {$ T} {Adjoin T transition(effort:{Effort T 1 1})} end}
+         TransWithEffort = {Map Transactions fun {$ T} {Adjoin T transition(effort:{Effort T 1 1})} end}
          Res = {BuildChain S0 TransWithEffort 0 0}
       in
          FinalBlockchain = Res.1

@@ -43,9 +43,7 @@ define
          OldCount = {CondSelect Counts Sender 0}
          NewCount = OldCount + 1
          NewCounts = {AdjoinAt Counts Sender NewCount}
-         NewDenylist =
-            if NewCount >= 3 then {AddToDenylist Sender Denylist}
-            else Denylist end
+         NewDenylist = if NewCount >= 3 then {AddToDenylist Sender Denylist} else Denylist end
       in
          NewCounts#NewDenylist
       end
@@ -92,16 +90,11 @@ define
             else
                local
                   E = {Effort T 1 1}
-                  IsValid =
-                     {Valid_transaction T State} andthen (AccEffort + E) =< 300
-                  NextState =
-                     if IsValid then {NewState State T} else State end
-                  NextEffort =
-                     if IsValid then AccEffort + E else AccEffort end
+                  IsValid = {Valid_transaction T State} andthen (AccEffort + E) =< 300
+                  NextState = if IsValid then {NewState State T} else State end
+                  NextEffort =if IsValid then AccEffort + E else AccEffort end
                   Updated = {RegisterSender T.sender Counts Denylist}
-                  Rec =
-                     {CheckBlockTransactions
-                      Reste NextState Num NextEffort Updated.2 Updated.1}
+                  Rec ={CheckBlockTransactions Reste NextState Num NextEffort Updated.2 Updated.1}
                in
                   if IsValid then (T|Rec.1)#Rec.2 else Rec end
                end
@@ -181,8 +174,7 @@ define
    proc {ExecuteBlockchain Genesis Transactions FinalState FinalBlockchain}
       local
          S0 = {AdaptGenesis Genesis}
-         TransWithEffort =
-            {Map Transactions fun {$ T} {Adjoin T transition(effort:{Effort T 1 1})} end}
+         TransWithEffort = {Map Transactions fun {$ T} {Adjoin T transition(effort:{Effort T 1 1})} end}
          Res = {BuildChain S0 TransWithEffort 0 0 nil}
       in
          FinalBlockchain = Res.1

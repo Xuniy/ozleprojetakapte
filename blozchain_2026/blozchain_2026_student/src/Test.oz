@@ -1,5 +1,5 @@
 local
-   %% 1. Copiez vos fonctions ici
+   
    %J'ai fait les trucs jusque 2.1.4 et aussi 2.2
    fun {Puissance X N} % Marche comme l'exposant car y'a pas en Oz. {Puissance 2 3} = 2 au cube=8
       if N == 0 then 1
