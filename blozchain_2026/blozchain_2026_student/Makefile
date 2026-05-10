@@ -9,7 +9,7 @@ ZIP_NAME=$(NOMA1)_$(NOMA2).zip
 BASE_SRC=src/BaseModule.oz
 HELPER_SRC=library/FileHelperModule.oz
 MAIN_SRC=Main.oz
-EXT_SRC=src/Denylist.oz src/LEffortNEstPasGratuit.oz src/FeruDeStats.oz
+EXT_SRC=src/Denylist.oz src/LEffortNEstPasGratuit.oz 
 
 # Fichiers compilés (foncteurs)
 BASE_OZF=$(BASE_SRC:.oz=.ozf)
