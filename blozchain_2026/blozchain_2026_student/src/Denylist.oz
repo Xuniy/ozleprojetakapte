@@ -3,6 +3,7 @@ export
    decode:Decode
    executeBlockchain:ExecuteBlockchain
 define
+    %La plupart des commentaires de ce fichier sont similaires à ceux de BaseModule.oz. Les différences ont été commentées
    fun {Puissance X N}
       if N == 0 then 1 else X * {Puissance X N-1} end
    end
@@ -27,31 +28,31 @@ define
       else Acc end
    end
 
-   fun {Contains X L}
-      case L of nil then false
+   fun {Contains Sender List} %Vérifie si le sender est déjà dans la denylist
+      case List of nil then false
       [] H|T then
-         if H == X then true else {Contains X T} end
+         if H == Sender then true else {Contains Sender T} end
       end
    end
 
-   fun {AddToDenylist Sender Denylist}
-      if {Contains Sender Denylist} then Denylist else Sender|Denylist end
+   fun {AddToDenylist Sender Denylist} %Rajoute le sender à la denylist s'il n'y est pas encore
+        if {Contains Sender Denylist} then Denylist else Sender|Denylist end
    end
 
-   fun {RegisterSender Sender Counts Denylist}
-      local
-         OldCount = {CondSelect Counts Sender 0}
-         NewCount = OldCount + 1
-         NewCounts = {AdjoinAt Counts Sender NewCount}
-         NewDenylist = if NewCount >= 3 then {AddToDenylist Sender Denylist} else Denylist end
-      in
-         NewCounts#NewDenylist
-      end
-   end
+    fun {RegisterSender Sender Counts Denylist}
+        local
+            OldCount = {CondSelect Counts Sender 0} %Le compte est à 0 si le sender n'a pas encore fait de transaction dans ce bloc
+            NewCount = OldCount + 1 %On incrémente de 1
+            NewCounts = {AdjoinAt Counts Sender NewCount} %Modifie le compte de transactions du sender pour un bloc
+            NewDenylist = if NewCount >= 3 then {AddToDenylist Sender Denylist} else Denylist end %S'il y a 3 transactions ou plus sur le même bloc, on rajoute le sender à la denylist
+        in
+            NewCounts#NewDenylist %On renvoie un tuple avec les comptes des utilisateurs et la denylist actualisée
+        end
+    end
 
    fun {AdaptGenesis GenesisState}
       {Record.mapInd GenesisState
-       fun {$ _ Balance} user(balance:Balance nonce:0) end}
+       fun {$ _ Balance} user(balance:Balance nonce:0) end} %On met _ pour dire qu'on a pas besoin de cette info de l'ancien génésis
    end
 
    fun {Valid_transaction T State}
@@ -71,32 +72,34 @@ define
 
    fun {NewState State T}
       local
-         S = T.sender R = T.receiver V = T.value
-         OldS = {CondSelect State S user(balance:0 nonce:0)}
-         OldR = {CondSelect State R user(balance:0 nonce:0)}
-         NS = user(balance: OldS.balance - V nonce: OldS.nonce + 1)
-         NR = user(balance: OldR.balance + V nonce: OldR.nonce)
+         Sender = T.sender 
+         Receiver = T.receiver 
+         Value = T.value
+         OldSender = {CondSelect State Sender user(balance:0 nonce:0)}
+         OldReceiver = {CondSelect State Receiver user(balance:0 nonce:0)}
+         NewSender = user(balance: OldSender.balance - Value nonce: OldSender.nonce + 1)
+         NewReceiver = user(balance: OldReceiver.balance + Value nonce: OldReceiver.nonce)
       in
-         {AdjoinAt {AdjoinAt State S NS} R NR}
+         {AdjoinAt {AdjoinAt State Sender NewSender} Receiver NewReceiver}
       end
    end
 
    fun {CheckBlockTransactions Trans State Num AccEffort Denylist Counts}
-      case Trans of nil then nil#Denylist
+      case Trans of nil then nil#Denylist %Lorsqu'on a finit la liste, on renvoie celle-ci ainsi que la Denylist dans un tuple
       [] T|Reste then
          if T.block_number == Num then
-            if {Contains T.sender Denylist} then
+            if {Contains T.sender Denylist} then %Si le sender est dans la denylist, on saute cette transaction et on continue avec le reste
                {CheckBlockTransactions Reste State Num AccEffort Denylist Counts}
             else
                local
-                  E = {Effort T 1 1}
-                  IsValid = {Valid_transaction T State} andthen (AccEffort + E) =< 300
-                  NextState = if IsValid then {NewState State T} else State end
-                  NextEffort =if IsValid then AccEffort + E else AccEffort end
+                  Eff = {Effort T 1 1}
+                  IsValid = {Valid_transaction T State} andthen (AccEffort + Eff) =< 300 %On vérifie que la transaction est valide et que l'effort total ne dépasse pas 300
+                  NextState = if IsValid then {NewState State T} else State end %On ne change l'état que si la transaction est valide
+                  NextEffort =if IsValid then AccEffort + Eff else AccEffort end %Pareil pour l'effort total
                   Updated = {RegisterSender T.sender Counts Denylist}
-                  Rec ={CheckBlockTransactions Reste NextState Num NextEffort Updated.2 Updated.1}
+                  Rec ={CheckBlockTransactions Reste NextState Num NextEffort Updated.2 Updated.1} %On rappelle la fonction avec les valeurs actualisées
                in
-                  if IsValid then (T|Rec.1)#Rec.2 else Rec end
+                  if IsValid then (T|Rec.1)#Rec.2 else Rec end %Si la transaction est valide, on l'ajoute à la liste des transactions du block
                end
             end
          else
@@ -107,12 +110,12 @@ define
 
    fun {CreateBlock Transactions State Num PrevHash Denylist}
       local
-         Checked = {CheckBlockTransactions Transactions State Num 0 Denylist counts}
+         Checked = {CheckBlockTransactions Transactions State Num 0 Denylist counts} %On mets counts sans majuscule car il doit être à 0 pour le premier appel 
          ValidT = Checked.1
          NewDenylist = Checked.2
-         B = block(number: Num previousHash: PrevHash transactions: ValidT)
+         Block = block(number: Num previousHash: PrevHash transactions: ValidT)
       in
-         {Adjoin B block(hash: {BlockHash B})}#NewDenylist
+         {Adjoin Block block(hash: {BlockHash Block})}#NewDenylist %On rajoute le hash du block au record et on ajoute la denylist au tuple
       end
    end
 
@@ -122,25 +125,25 @@ define
       end
    end
 
-   fun {BuildChain State Trans Num PrevHash Denylist}
+   fun {CreateBlockChain State Trans Num PrevHash Denylist}
       local Created = {CreateBlock Trans State Num PrevHash Denylist}
-         B = Created.1
+         Block = Created.1
          NextDenylist = Created.2
       in
-         if B.transactions == nil then nil#State
+         if Block.transactions == nil then nil#State %Si le bloc n'a pas de transactions, la blockchain est finie donc on la retourne avec l'état final dans un tuple
          else
             local
-               NextS = {UpdateStateWithList State B.transactions}
-               Rec = {BuildChain NextS Trans Num+1 B.hash NextDenylist}
+               NextState = {UpdateStateWithList State Block.transactions}
+               Rec = {CreateBlockChain NextState Trans Num+1 Block.hash NextDenylist}
             in
-               (B | Rec.1)#Rec.2
+               (Block | Rec.1)#Rec.2 %On rajoute le bloc à la blockchain et on retourne la blockchain avec l'état final dans un tuple
             end
          end
       end
    end
 
-   Tableau_Sharelock=tableau(10:97 11:98 12:99 13:100 14:101 15:102 16:103 17:104 18:105 19:106 20:107 21:108 22:109 23:110 24:111 25:112 26:113 27:114 28:115 29:116 30:117 31:118 32:119 33:120 34:121 35:122 36:32)
-
+   Tableau_Sharelock=tableau(10:&a 11:&b 12:&c 13:&d 14:&e 15:&f 16:&g 17:&h 18:&i 19:&j 20:&k 21:&l 22:&m 23:&n 24:&o 25:&p 26:&q 27:&r 28:&s 29:&t 30:&u 31:&v 32:&w 33:&x 34:&y 35:&z 36:& )
+   
    fun {Decrypt Number}
       local N = (Number mod 37) in
          if N < 10 then Tableau_Sharelock.36
@@ -156,7 +159,7 @@ define
    fun {Phrase_Liste Liste}
       case Liste of nil then nil
       [] H|H2|T then {Decrypt (10*H+H2)}|{Phrase_Liste T}
-      [] _|nil then nil
+      [] H|nil then nil
       end
    end
 
@@ -164,18 +167,18 @@ define
       {Phrase_Liste {TransformToList Hash}}
    end
 
-   fun {Decode BChain}
+   fun {Decode BlockChain}
       {Flatten
-       case BChain of nil then nil
+       case BlockChain of nil then nil
        [] B|R then {Phrase B.hash} | {Decode R}
        end}
    end
 
    proc {ExecuteBlockchain Genesis Transactions FinalState FinalBlockchain}
       local
-         S0 = {AdaptGenesis Genesis}
+         StartState = {AdaptGenesis Genesis}
          TransWithEffort = {Map Transactions fun {$ T} {Adjoin T transition(effort:{Effort T 1 1})} end}
-         Res = {BuildChain S0 TransWithEffort 0 0 nil}
+         Res = {CreateBlockChain StartState TransWithEffort 0 0 nil}
       in
          FinalBlockchain = Res.1
          FinalState = Res.2
