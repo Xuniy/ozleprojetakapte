@@ -3,6 +3,7 @@ export
    decode:Decode
    executeBlockchain:ExecuteBlockchain
 define
+    %Tous les commentaires de BaseModule.oz sont similaires ici sauf quelques ajouts suite à l'effort que nous devons prendre en compte
    fun {Puissance X N}
       if N == 0 then 1 else X * {Puissance X N-1} end
    end
@@ -35,12 +36,12 @@ define
    fun {Valid_transaction T State}
       local
          Sender = {CondSelect State T.sender user(balance:0 nonce:0)}
-         E = {Effort T 1 1}
+         Eff = {Effort T 1 1}
       in
          if T.max_effort >= 0 andthen
-            T.max_effort >= E andthen
+            T.max_effort >= Eff andthen
             T.value >= 0 andthen
-            Sender.balance >= T.value + E andthen
+            Sender.balance >= T.value + Eff andthen %Le sender doit avoir assez pour payer la valeur de la transaction et son effort
             T.hash \= 0 andthen
             T.hash == {TransactionHash T} andthen
             T.nonce == Sender.nonce + 1
@@ -50,25 +51,27 @@ define
 
    fun {NewState State T}
       local
-         S = T.sender R = T.receiver V = T.value
-         E = {Effort T 1 1}
-         OldS = {CondSelect State S user(balance:0 nonce:0)}
-         OldR = {CondSelect State R user(balance:0 nonce:0)}
-         NS = user(balance: OldS.balance - V - E nonce: OldS.nonce + 1)
-         NR = user(balance: OldR.balance + V nonce: OldR.nonce)
+         Sender = T.sender 
+         Receiver = T.receiver 
+         Value = T.value
+         Eff = {Effort T 1 1}
+         OldSender = {CondSelect State Sender user(balance:0 nonce:0)}
+         OldReceiver = {CondSelect State Receiver user(balance:0 nonce:0)}
+         NewSender = user(balance: OldSender.balance - Value - Eff nonce: OldSender.nonce + 1) %On enlève également l'effort au solde du sender
+         NewReceiver = user(balance: OldReceiver.balance + Value nonce: OldReceiver.nonce)
       in
-         {AdjoinAt {AdjoinAt State S NS} R NR}
+         {AdjoinAt {AdjoinAt State Sender NewSender} Receiver NewReceiver}
       end
    end
 
    fun {CheckBlockTransactions Trans State Num AccEffort}
       case Trans of nil then nil
       [] T|Reste then
-         local E = {Effort T 1 1} in
+         local Eff = {Effort T 1 1} in
             if {Valid_transaction T State} andthen
-               T.block_number == Num andthen (AccEffort + E) =< 300
+               T.block_number == Num andthen (AccEffort + Eff) =< 300
             then
-               T | {CheckBlockTransactions Reste {NewState State T} Num AccEffort + E}
+               T | {CheckBlockTransactions Reste {NewState State T} Num AccEffort + Eff}
             else
                {CheckBlockTransactions Reste State Num AccEffort}
             end
@@ -105,7 +108,7 @@ define
       end
    end
 
-   Tableau_Sharelock=tableau(10:97 11:98 12:99 13:100 14:101 15:102 16:103 17:104 18:105 19:106 20:107 21:108 22:109 23:110 24:111 25:112 26:113 27:114 28:115 29:116 30:117 31:118 32:119 33:120 34:121 35:122 36:32)
+   Tableau_Sharelock=tableau(10:&a 11:&b 12:&c 13:&d 14:&e 15:&f 16:&g 17:&h 18:&i 19:&j 20:&k 21:&l 22:&m 23:&n 24:&o 25:&p 26:&q 27:&r 28:&s 29:&t 30:&u 31:&v 32:&w 33:&x 34:&y 35:&z 36:& )
 
    fun {Decrypt Number}
       local N = (Number mod 37) in
